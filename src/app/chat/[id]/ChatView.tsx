@@ -78,12 +78,27 @@ export function ChatView({ sessionId }: { sessionId: string }) {
         const res = await sessionsApi.getMessages(sessionId);
         if (cancelled) return;
 
-        const history: DisplayMessage[] = res.data.map((m) => ({
-          id: m.id,
-          role: m.role,
-          content: m.content,
-        }));
+        const historyArtifacts: Artifact[] = [];
+        const history: DisplayMessage[] = res.data.map((m) => {
+          const msg: DisplayMessage = { id: m.id, role: m.role, content: m.content };
+          if (m.artifact_path && m.artifact_filename && m.artifact_version != null) {
+            const artifact: Artifact = {
+              filename: m.artifact_filename,
+              download_url: `/api/files/${m.artifact_path}`,
+              tool: "pdf_report",
+              version: m.artifact_version,
+              messageId: m.id,
+            };
+            msg.artifact = artifact;
+            historyArtifacts.push(artifact);
+          }
+          return msg;
+        });
         setMessages(history);
+        if (historyArtifacts.length > 0) {
+          setArtifacts(historyArtifacts);
+          artifactCountRef.current = historyArtifacts.length;
+        }
       } catch {
         if (!cancelled) setMessages([]);
       } finally {

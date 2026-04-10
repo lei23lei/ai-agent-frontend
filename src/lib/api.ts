@@ -22,6 +22,9 @@ export interface MessageOut {
   role: "user" | "assistant";
   content: string;
   created_at: string;
+  artifact_path?: string | null;
+  artifact_filename?: string | null;
+  artifact_version?: number | null;
 }
 
 export interface DocumentOut {
