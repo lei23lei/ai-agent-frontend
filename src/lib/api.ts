@@ -71,6 +71,21 @@ export const filesApi = {
   clearAll: () => api.post("/api/files/clear-all"),
   uploadUrl: (url: string) =>
     api.post<FileUploadResult>("/api/files/upload-url", { url }),
+  upload: (
+    files: File[],
+    onProgress?: (pct: number) => void
+  ) => {
+    const formData = new FormData();
+    files.forEach((f) => formData.append("files", f));
+    return api.post<BatchUploadResponse>("/api/files/upload", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+      onUploadProgress: (evt) => {
+        if (onProgress && evt.total) {
+          onProgress(Math.round((evt.loaded * 100) / evt.total));
+        }
+      },
+    });
+  },
 };
 
 export const settingsApi = {

@@ -7,6 +7,7 @@ import { Sidebar } from "./Sidebar";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -21,12 +22,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 shrink-0 transition-transform duration-200 ease-in-out",
-          "lg:relative lg:translate-x-0",
-          mobileOpen ? "translate-x-0" : "-translate-x-full"
+          // Mobile: fixed overlay, always w-64
+          "fixed inset-y-0 left-0 z-50 w-64 transition-all duration-200 ease-in-out",
+          // Desktop: in-flow, width driven by collapse state
+          "lg:relative lg:z-auto lg:inset-auto",
+          isCollapsed ? "lg:w-14" : "lg:w-64",
+          // Mobile visibility
+          mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
-        <Sidebar onClose={() => setMobileOpen(false)} />
+        <Sidebar
+          onClose={() => setMobileOpen(false)}
+          isCollapsed={isCollapsed}
+          onToggleCollapse={() => setIsCollapsed((v) => !v)}
+        />
       </aside>
 
       {/* Main area */}

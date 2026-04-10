@@ -5,11 +5,14 @@ import { usePathname, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "next-themes";
 import { useRef, useState } from "react";
+import type { LucideIcon } from "lucide-react";
 import {
   FolderOpen,
   MessageSquarePlus,
   Moon,
   MoreHorizontal,
+  PanelLeftClose,
+  PanelLeftOpen,
   Pencil,
   Settings,
   Sun,
@@ -36,12 +39,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
+// ─── Props ───────────────────────────────────────────────────────────────────
 
 interface SidebarProps {
   onClose?: () => void;
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
 }
 
-export function Sidebar({ onClose }: SidebarProps) {
+// ─── Sidebar ─────────────────────────────────────────────────────────────────
+
+export function Sidebar({ onClose, isCollapsed, onToggleCollapse }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -73,9 +87,7 @@ export function Sidebar({ onClose }: SidebarProps) {
     mutationFn: (id: string) => sessionsApi.delete(id),
     onSuccess: (_, deletedId) => {
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
-      if (pathname === `/chat/${deletedId}`) {
-        router.push("/");
-      }
+      if (pathname === `/chat/${deletedId}`) router.push("/");
     },
   });
 
@@ -97,14 +109,114 @@ export function Sidebar({ onClose }: SidebarProps) {
     ? pathname.split("/chat/")[1]
     : null;
 
+  const isDark = resolvedTheme === "dark";
+  const toggleTheme = () => setTheme(isDark ? "light" : "dark");
+
+  // ── Collapsed view ──
+  if (isCollapsed) {
+    return (
+      <div className="flex h-full flex-col items-center border-r border-sidebar-border bg-sidebar py-3 gap-1">
+        {/* Expand button */}
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <button
+                onClick={onToggleCollapse}
+                aria-label="Expand sidebar"
+                className="flex h-9 w-9 items-center justify-center rounded-md text-sidebar-foreground transition-colors hover:bg-sidebar-accent/60"
+              />
+            }
+          >
+            <PanelLeftOpen className="h-4 w-4" />
+          </TooltipTrigger>
+          <TooltipContent side="right">Expand sidebar</TooltipContent>
+        </Tooltip>
+
+        {/* Logo */}
+        <Link
+          href="/"
+          onClick={onClose}
+          className="flex h-9 w-9 items-center justify-center rounded-md text-xl transition-colors hover:bg-sidebar-accent/60 select-none"
+          aria-label="Open Crab home"
+        >
+          🦀
+        </Link>
+
+        <Separator className="my-1 w-8 bg-sidebar-border" />
+
+        {/* New Chat */}
+        <NavIconLink
+          href="/"
+          icon={MessageSquarePlus}
+          label="New Chat"
+          onClick={onClose}
+          isActive={false}
+        />
+
+        <div className="flex-1" />
+
+        <Separator className="my-1 w-8 bg-sidebar-border" />
+
+        {/* Files */}
+        <NavIconLink
+          href="/files"
+          icon={FolderOpen}
+          label="Files"
+          onClick={onClose}
+          isActive={pathname === "/files"}
+        />
+
+        {/* Settings */}
+        <NavIconLink
+          href="/settings"
+          icon={Settings}
+          label="Settings"
+          onClick={onClose}
+          isActive={pathname === "/settings"}
+        />
+
+        {/* Dark mode toggle */}
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <button
+                onClick={toggleTheme}
+                aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+                className="flex h-9 w-9 items-center justify-center rounded-md text-sidebar-foreground transition-colors hover:bg-sidebar-accent/60"
+              />
+            }
+          >
+            {isDark ? (
+              <Sun className="h-4 w-4" />
+            ) : (
+              <Moon className="h-4 w-4" />
+            )}
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            {isDark ? "Light Mode" : "Dark Mode"}
+          </TooltipContent>
+        </Tooltip>
+      </div>
+    );
+  }
+
+  // ── Expanded view ──
   return (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
       {/* Header */}
-      <div className="flex items-center gap-2.5 px-4 py-5">
+      <div className="flex items-center gap-2 px-3 py-4">
         <span className="text-2xl select-none">🦀</span>
-        <span className="font-semibold text-lg tracking-tight">
+        <span className="flex-1 font-semibold text-base tracking-tight truncate">
           Open Crab
         </span>
+        {/* Collapse button — only visible on desktop */}
+        <button
+          onClick={onToggleCollapse}
+          aria-label="Collapse sidebar"
+          className="hidden lg:flex h-7 w-7 items-center justify-center rounded-md text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-foreground shrink-0"
+        >
+          <PanelLeftClose className="h-4 w-4" />
+        </button>
       </div>
 
       {/* New Chat */}
@@ -181,9 +293,7 @@ export function Sidebar({ onClose }: SidebarProps) {
                           <MoreHorizontal className="h-3.5 w-3.5" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-36">
-                          <DropdownMenuItem
-                            onClick={() => startRename(session)}
-                          >
+                          <DropdownMenuItem onClick={() => startRename(session)}>
                             <Pencil className="mr-2 h-3.5 w-3.5" />
                             Rename
                           </DropdownMenuItem>
@@ -214,7 +324,8 @@ export function Sidebar({ onClose }: SidebarProps) {
           onClick={onClose}
           className={cn(
             buttonVariants({ variant: "ghost" }),
-            "w-full justify-start gap-2 text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+            "w-full justify-start gap-2 text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
+            pathname === "/files" && "bg-sidebar-accent/60"
           )}
         >
           <FolderOpen className="h-4 w-4" />
@@ -225,7 +336,8 @@ export function Sidebar({ onClose }: SidebarProps) {
           onClick={onClose}
           className={cn(
             buttonVariants({ variant: "ghost" }),
-            "w-full justify-start gap-2 text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+            "w-full justify-start gap-2 text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
+            pathname === "/settings" && "bg-sidebar-accent/60"
           )}
         >
           <Settings className="h-4 w-4" />
@@ -234,16 +346,10 @@ export function Sidebar({ onClose }: SidebarProps) {
         <Button
           variant="ghost"
           className="w-full justify-start gap-2 text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
-          onClick={() =>
-            setTheme(resolvedTheme === "dark" ? "light" : "dark")
-          }
+          onClick={toggleTheme}
         >
-          {resolvedTheme === "dark" ? (
-            <Sun className="h-4 w-4" />
-          ) : (
-            <Moon className="h-4 w-4" />
-          )}
-          {resolvedTheme === "dark" ? "Light Mode" : "Dark Mode"}
+          {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          {isDark ? "Light Mode" : "Dark Mode"}
         </Button>
       </div>
 
@@ -279,5 +385,44 @@ export function Sidebar({ onClose }: SidebarProps) {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+// ─── NavIconLink ─────────────────────────────────────────────────────────────
+
+function NavIconLink({
+  href,
+  icon: Icon,
+  label,
+  onClick,
+  isActive,
+}: {
+  href: string;
+  icon: LucideIcon;
+  label: string;
+  onClick?: () => void;
+  isActive: boolean;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Link
+            href={href}
+            onClick={onClick}
+            aria-label={label}
+            className={cn(
+              "flex h-9 w-9 items-center justify-center rounded-md text-sidebar-foreground transition-colors",
+              isActive
+                ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                : "hover:bg-sidebar-accent/60"
+            )}
+          />
+        }
+      >
+        <Icon className="h-4 w-4" />
+      </TooltipTrigger>
+      <TooltipContent side="right">{label}</TooltipContent>
+    </Tooltip>
   );
 }
